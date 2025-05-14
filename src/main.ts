@@ -2,8 +2,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import * as path from "path";
-import { generatePostmanItemsFromSourceFile } from "./generator";
+import {
+  generateCollection,
+  generatePostmanItemsFromSourceFile,
+} from "./generator";
 import { Project } from "ts-morph";
+import { Command } from "commander";
+import * as fs from "fs";
 
 // Create an MCP server
 const server = new McpServer({
@@ -203,79 +208,84 @@ server.tool(
 // Start receiving messages on stdin and sending messages on stdout
 const transport = new StdioServerTransport();
 
-// src/main.ts
 
-// const program = new Command();
+/**
+ * This is the main entry point of the CLI tool
+ * It uses the commander library to parse command line arguments
+ * Example command
+ * node /path/to/your/folder/dist/main.js generate /path/to/nestjs/project -o collection.json -n "My API Collection"
+ */
+const program = new Command();
 
-// program
-//   .name("mcp-generator")
-//   .description("NestJS MCP to Postman Collection Generator")
-//   .version("0.1.0");
+program
+  .name("mcp-generator")
+  .description("NestJS MCP to Postman Collection Generator")
+  .version("0.1.0");
 
-// program
-//   .command("generate")
-//   .description("Generate a Postman collection from a NestJS project")
-//   .argument(
-//     "<projectPath>",
-//     "Path to the NestJS project root (containing tsconfig.json)"
-//   )
-//   .option(
-//     "-o, --output <outputFile>",
-//     "Output Postman collection JSON file path",
-//     "postman_collection.json"
-//   )
-//   .option("-n, --name <collectionName>", "Name for the Postman collection")
-//   .action((projectPath, options) => {
-//     console.log(`Scanning NestJS project at: ${projectPath}`);
-//     console.log(`Outputting to: ${options.output}`);
+program
+  .command("generate")
+  .description("Generate a Postman collection from a NestJS project")
+  .argument(
+    "<projectPath>",
+    "Path to the NestJS project root (containing tsconfig.json)"
+  )
+  .option(
+    "-o, --output <outputFile>",
+    "Output Postman collection JSON file path",
+    "postman_collection.json"
+  )
+  .option("-n, --name <collectionName>", "Name for the Postman collection")
+  .action((projectPath, options) => {
+    console.log(`Scanning NestJS project at: ${projectPath}`);
+    console.log(`Outputting to: ${options.output}`);
 
-//     const absoluteProjectPath = path.resolve(projectPath);
-//     if (
-//       !fs.existsSync(absoluteProjectPath) ||
-//       !fs.statSync(absoluteProjectPath).isDirectory()
-//     ) {
-//       console.error(
-//         `Error: Project path "${absoluteProjectPath}" does not exist or is not a directory.`
-//       );
-//       process.exit(1);
-//     }
-//     const tsConfigPath = path.join(absoluteProjectPath, "tsconfig.json");
-//     if (!fs.existsSync(tsConfigPath)) {
-//       console.error(
-//         `Error: tsconfig.json not found in "${absoluteProjectPath}". This tool requires it for proper type resolution.`
-//       );
-//       process.exit(1);
-//     }
+    const absoluteProjectPath = path.resolve(projectPath);
+    if (
+      !fs.existsSync(absoluteProjectPath) ||
+      !fs.statSync(absoluteProjectPath).isDirectory()
+    ) {
+      console.error(
+        `Error: Project path "${absoluteProjectPath}" does not exist or is not a directory.`
+      );
+      process.exit(1);
+    }
+    const tsConfigPath = path.join(absoluteProjectPath, "tsconfig.json");
+    if (!fs.existsSync(tsConfigPath)) {
+      console.error(
+        `Error: tsconfig.json not found in "${absoluteProjectPath}". This tool requires it for proper type resolution.`
+      );
+      process.exit(1);
+    }
 
-//     try {
-//       const collectionName =
-//         options.name || path.basename(absoluteProjectPath) + " API";
-//       const postmanCollection = generateCollection(
-//         absoluteProjectPath,
-//         collectionName
-//       );
+    try {
+      const collectionName =
+        options.name || path.basename(absoluteProjectPath) + " API";
+      const postmanCollection = generateCollection(
+        absoluteProjectPath,
+        collectionName
+      );
 
-//       const outputFilePath = path.resolve(options.output);
-//       fs.writeFileSync(
-//         outputFilePath,
-//         JSON.stringify(postmanCollection, null, 2)
-//       );
-//       console.log(
-//         `\nPostman collection generated successfully at: ${outputFilePath}`
-//       );
-//       console.log(`You can import this file into Postman.`);
-//     } catch (error) {
-//       console.error("\nAn error occurred during collection generation:");
-//       console.error(error);
-//       process.exit(1);
-//     }
-//   });
+      const outputFilePath = path.resolve(options.output);
+      fs.writeFileSync(
+        outputFilePath,
+        JSON.stringify(postmanCollection, null, 2)
+      );
+      console.log(
+        `\nPostman collection generated successfully at: ${outputFilePath}`
+      );
+      console.log(`You can import this file into Postman.`);
+    } catch (error) {
+      console.error("\nAn error occurred during collection generation:");
+      console.error(error);
+      process.exit(1);
+    }
+  });
 
-// program.parse(process.argv);
+program.parse(process.argv);
 
-// if (!process.argv.slice(2).length) {
-//   program.outputHelp();
-// }
+if (!process.argv.slice(2).length) {
+  program.outputHelp();
+}
 
 (async () => {
   await server.connect(transport);
