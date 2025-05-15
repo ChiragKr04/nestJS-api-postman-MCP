@@ -39,29 +39,14 @@ const zod_1 = require("zod");
 const path = __importStar(require("path"));
 const generator_1 = require("./generator");
 const ts_morph_1 = require("ts-morph");
+const commander_1 = require("commander");
+const fs = __importStar(require("fs"));
 // Create an MCP server
 const server = new mcp_js_1.McpServer({
     name: "Nest-Js-MCP-Postman-Generator",
     description: "NestJS MCP to Postman Collection Generator",
     version: "1.0.0",
 });
-// Add an addition tool
-// server.tool("add", { a: z.number(), b: z.number() }, async ({ a, b }) => ({
-//   content: [{ type: "text", text: String(a + b) }],
-// }));
-// Add a dynamic greeting resource
-// server.resource(
-//   "greeting",
-//   new ResourceTemplate("greeting://{name}", { list: undefined }),
-//   async (uri, { name }) => ({
-//     contents: [
-//       {
-//         uri: uri.href,
-//         text: `Hello, ${name}!`,
-//       },
-//     ],
-//   })
-// );
 // Add a tool to convert NestJS resources to Postman collections
 server.tool("convert-nest-js-resource-to-postman", 
 /**
@@ -240,74 +225,93 @@ server.tool("convert-nest-js-resource-to-postman",
         ],
     };
 });
-// Start receiving messages on stdin and sending messages on stdout
-const transport = new stdio_js_1.StdioServerTransport();
-// src/main.ts
-// const program = new Command();
-// program
-//   .name("mcp-generator")
-//   .description("NestJS MCP to Postman Collection Generator")
-//   .version("0.1.0");
-// program
-//   .command("generate")
-//   .description("Generate a Postman collection from a NestJS project")
-//   .argument(
-//     "<projectPath>",
-//     "Path to the NestJS project root (containing tsconfig.json)"
-//   )
-//   .option(
-//     "-o, --output <outputFile>",
-//     "Output Postman collection JSON file path",
-//     "postman_collection.json"
-//   )
-//   .option("-n, --name <collectionName>", "Name for the Postman collection")
-//   .action((projectPath, options) => {
-//     console.log(`Scanning NestJS project at: ${projectPath}`);
-//     console.log(`Outputting to: ${options.output}`);
-//     const absoluteProjectPath = path.resolve(projectPath);
-//     if (
-//       !fs.existsSync(absoluteProjectPath) ||
-//       !fs.statSync(absoluteProjectPath).isDirectory()
-//     ) {
-//       console.error(
-//         `Error: Project path "${absoluteProjectPath}" does not exist or is not a directory.`
-//       );
-//       process.exit(1);
-//     }
-//     const tsConfigPath = path.join(absoluteProjectPath, "tsconfig.json");
-//     if (!fs.existsSync(tsConfigPath)) {
-//       console.error(
-//         `Error: tsconfig.json not found in "${absoluteProjectPath}". This tool requires it for proper type resolution.`
-//       );
-//       process.exit(1);
-//     }
-//     try {
-//       const collectionName =
-//         options.name || path.basename(absoluteProjectPath) + " API";
-//       const postmanCollection = generateCollection(
-//         absoluteProjectPath,
-//         collectionName
-//       );
-//       const outputFilePath = path.resolve(options.output);
-//       fs.writeFileSync(
-//         outputFilePath,
-//         JSON.stringify(postmanCollection, null, 2)
-//       );
-//       console.log(
-//         `\nPostman collection generated successfully at: ${outputFilePath}`
-//       );
-//       console.log(`You can import this file into Postman.`);
-//     } catch (error) {
-//       console.error("\nAn error occurred during collection generation:");
-//       console.error(error);
-//       process.exit(1);
-//     }
-//   });
-// program.parse(process.argv);
-// if (!process.argv.slice(2).length) {
-//   program.outputHelp();
-// }
-(async () => {
-    await server.connect(transport);
-})();
+// Function to start the MCP server
+async function startMcpServer() {
+    const transport = new stdio_js_1.StdioServerTransport();
+    try {
+        await server.connect(transport);
+        console.log("MCP server started and listening on stdin/stdout");
+    }
+    catch (error) {
+        console.error("Error starting MCP server:", error);
+    }
+}
+/**
+ * This is the main entry point of the CLI tool
+ * It uses the commander library to parse command line arguments
+ * Example command
+ * node /path/to/your/folder/dist/main.js generate /path/to/nestjs/project -o collection.json -n "My API Collection"
+ */
+const program = new commander_1.Command();
+program
+    .name("mcp-generator")
+    .description("NestJS MCP to Postman Collection Generator")
+    .version("0.1.0");
+program
+    .command("generate")
+    .description("Generate a Postman collection from a NestJS project")
+    .argument("<projectPath>", "Path to the NestJS project root (containing tsconfig.json)")
+    .option("-o, --output <outputFile>", "Output Postman collection JSON file path", "postman_collection.json")
+    .option("-n, --name <collectionName>", "Name for the Postman collection")
+    .action((projectPath, options) => {
+    console.log(`Scanning NestJS project at: ${projectPath}`);
+    console.log(`Outputting to: ${options.output}`);
+    const absoluteProjectPath = path.resolve(projectPath);
+    if (!fs.existsSync(absoluteProjectPath) ||
+        !fs.statSync(absoluteProjectPath).isDirectory()) {
+        console.error(`Error: Project path "${absoluteProjectPath}" does not exist or is not a directory.`);
+        process.exit(1);
+    }
+    const tsConfigPath = path.join(absoluteProjectPath, "tsconfig.json");
+    if (!fs.existsSync(tsConfigPath)) {
+        console.error(`Error: tsconfig.json not found in "${absoluteProjectPath}". This tool requires it for proper type resolution.`);
+        process.exit(1);
+    }
+    try {
+        const collectionName = options.name || path.basename(absoluteProjectPath) + " API";
+        const postmanCollection = (0, generator_1.generateCollection)(absoluteProjectPath, collectionName);
+        const outputFilePath = path.resolve(options.output);
+        fs.writeFileSync(outputFilePath, JSON.stringify(postmanCollection, null, 2));
+        console.log(`\nPostman collection generated successfully at: ${outputFilePath}`);
+        console.log(`You can import this file into Postman.`);
+    }
+    catch (error) {
+        console.error("\nAn error occurred during collection generation:");
+        console.error(error);
+        process.exit(1);
+    }
+});
+// Add a new command to start the MCP server
+program
+    .command("serve")
+    .description("Start the MCP server for integration with other tools")
+    .action(() => {
+    console.log("Starting MCP server...");
+    startMcpServer();
+});
+// Add a command that combines both functionalities
+program
+    .command("start")
+    .description("Start both the MCP server and process CLI commands")
+    .option("-m, --mode <mode>", "Operation mode: 'cli', 'server', or 'both'", "both")
+    .action(async (options) => {
+    const mode = options.mode.toLowerCase();
+    if (mode === "server" || mode === "both") {
+        console.log("Starting MCP server in the background...");
+        // Start server in the background
+        startMcpServer().catch((err) => {
+            console.error("Failed to start MCP server:", err);
+        });
+    }
+    if (mode === "cli" || mode === "both") {
+        console.log("CLI is ready to receive commands");
+        console.log("To generate a collection, use the 'generate' command");
+    }
+});
+// Parse command line arguments
+program.parse(process.argv);
+// Show help if no arguments were provided
+if (!process.argv.slice(2).length) {
+    program.outputHelp();
+}
 //# sourceMappingURL=main.js.map

@@ -205,9 +205,16 @@ server.tool(
   }
 );
 
-// Start receiving messages on stdin and sending messages on stdout
-const transport = new StdioServerTransport();
-
+// Function to start the MCP server
+async function startMcpServer() {
+  const transport = new StdioServerTransport();
+  try {
+    await server.connect(transport);
+    console.log("MCP server started and listening on stdin/stdout");
+  } catch (error) {
+    console.error("Error starting MCP server:", error);
+  }
+}
 
 /**
  * This is the main entry point of the CLI tool
@@ -281,12 +288,45 @@ program
     }
   });
 
+// Add a new command to start the MCP server
+program
+  .command("serve")
+  .description("Start the MCP server for integration with other tools")
+  .action(() => {
+    console.log("Starting MCP server...");
+    startMcpServer();
+  });
+
+// Add a command that combines both functionalities
+program
+  .command("start")
+  .description("Start both the MCP server and process CLI commands")
+  .option(
+    "-m, --mode <mode>",
+    "Operation mode: 'cli', 'server', or 'both'",
+    "both"
+  )
+  .action(async (options) => {
+    const mode = options.mode.toLowerCase();
+
+    if (mode === "server" || mode === "both") {
+      console.log("Starting MCP server in the background...");
+      // Start server in the background
+      startMcpServer().catch((err) => {
+        console.error("Failed to start MCP server:", err);
+      });
+    }
+
+    if (mode === "cli" || mode === "both") {
+      console.log("CLI is ready to receive commands");
+      console.log("To generate a collection, use the 'generate' command");
+    }
+  });
+
+// Parse command line arguments
 program.parse(process.argv);
 
+// Show help if no arguments were provided
 if (!process.argv.slice(2).length) {
   program.outputHelp();
 }
-
-(async () => {
-  await server.connect(transport);
-})();

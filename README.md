@@ -46,7 +46,10 @@ Add the following configuration to your Claude Desktop settings:
   "mcpServers": {
     "Nest-Js-MCP-Postman-Generator": {
       "command": "node",
-      "args": ["/path/to/your/clone/nestJS-api-postman-MCP/dist/main.js"]
+      "args": [
+        "/path/to/your/clone/nestJS-api-postman-MCP/dist/main.js",
+        "start"
+      ]
     }
   }
 }
@@ -62,7 +65,10 @@ Add the following configuration to your VS Code settings.json:
     "servers": {
       "Nest-Js-MCP-Postman-Generator": {
         "command": "node",
-        "args": ["/path/to/your/clone/nestJS-api-postman-MCP/dist/main.js"]
+        "args": [
+          "/path/to/your/clone/nestJS-api-postman-MCP/dist/main.js",
+          "start"
+        ]
       }
     }
   }
